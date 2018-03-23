@@ -5,10 +5,7 @@ import com.spx.dev.DownloadUtil;
 import com.spx.dev.HttpLoader;
 import com.spx.dev.HttpManager;
 import com.spx.dev.net.LoggingInterceptor;
-import com.spx.dev.ugirls.domain.GetDownloadUrlResult;
-import com.spx.dev.ugirls.domain.Product;
-import com.spx.dev.ugirls.domain.ProductListResult;
-import com.spx.dev.ugirls.domain.ProductTagResult;
+import com.spx.dev.ugirls.domain.*;
 import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 import io.reactivex.Observable;
 import io.reactivex.Observer;
@@ -28,10 +25,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -89,7 +83,7 @@ public class UGirls {
 
 
     public static void main(String[] args) throws IOException {
-        String json = "SBhh9ZfGEz++o5Va088OAEaP0jR9pZ6BXM8sAD6x56SJastvgn16K06MUZ5dDr2dAeazk02ctRAq6KjLGJdi9DmRN5hcMchY7Dh/LOeG0u89SfgdShiRml0Gei/NzT7jfBrbh03zjbFxIFuWxxfVMbWjd1foIqcnnTJaxy3UTMeDaS56eYvcdVz5j/OWLxLbhKq06qoAMlwtgACVo8l0bX+35YEJqsg05Kog4D4mK13IHQkl20gZmAmmAPUu5uDAwau4w0GADpJraQeQdaUJnGPKc07G4TJ/vs1/CR4bhiebC2QC2+dP9sdmjXrbM8il";
+        String json = "wPUGwDTwC430Zeb8pkcMb1ICxlP2Pop6fUkKryPUC9wVqMJsmSr9v68zqptGx5Di";
         try {
             json = EncrypterUtil.AESDecrypt(EncrypterUtil.getKey(), json);
             json = UGrilUtil.unicodeToString(json);
@@ -108,6 +102,7 @@ public class UGirls {
         uGirls.getProductTags();
 
         uGirls.getAllProducts();
+
 //        uGirls.tryUserInfo();
 //        uGirls.getUserInfo("2000152");
     }
@@ -130,6 +125,19 @@ public class UGirls {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void purchseProduct(int productId) throws IOException {
+        Map<String, String> parms
+                = converToParams("UserId=4000057&Platform=android&Qty=1&Remark=&Version=2.4.5" +
+                "&Auth=0&EquipmentCode=56acf4ca5e0711e698f91866da5cdd871470729629" +
+                "&ProductId=" + productId +
+                "&AgentCode=ugirls&Token=4e77af0ca26d236ff0e632c43241e3dc");
+
+        Call<PurchaseResult> call = api.purchase(parms);
+        Response<PurchaseResult> execute = call.execute();
+        PurchaseResult purchaseResult = execute.body();
+        System.out.println(purchaseResult.getMsg());
     }
 
     public void getOneProdct(ProductListResult.SpecialListbean specialListbean, int index) throws IOException {
@@ -201,23 +209,27 @@ public class UGirls {
                 String count = productListResult.getCount();
                 product.totalCount = Integer.parseInt(count);
                 List<ProductListResult.SpecialListbean> specialList = productListResult.getSpecialList();
+//                if(product.loadedCount>100){
                 for (int i = 0; i < specialList.size(); i++) {
                     ProductListResult.SpecialListbean specialListbean = specialList.get(i);
                     int iProductId = specialListbean.getIProductId();
                     String sProductName = specialListbean.getSProductName();
                     try {
-                        getOneProdct(specialListbean, i + 1);
+                        getOneProdct(specialListbean, i + 1 + product.loadedCount);
                     } catch (Exception ex) {
                         ex.printStackTrace();
                         try {
-                            Thread.sleep(2000);
-                            getOneProdct(specialListbean, i + 1);
+                            Thread.sleep(500);
+                            purchseProduct(specialListbean.getIProductId());
+                            getOneProdct(specialListbean, i + 1 + product.loadedCount);
                         } catch (Exception e) {
                             e.printStackTrace();
                             throw ex;
                         }
                     }
                 }
+//                }
+
 //                for (ProductListResult.SpecialListbean specialListbean : specialList) {
 //
 //                }
@@ -283,7 +295,7 @@ public class UGirls {
     }
 
     private Map<String, String> converToParams(String str) {
-        Map<String, String> result = new HashMap<>();
+        Map<String, String> result = new LinkedHashMap<>();
         String[] split = str.split("&");
         for (String s : split) {
             if (s.contains("=")) {
